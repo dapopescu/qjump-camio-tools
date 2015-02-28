@@ -28,7 +28,6 @@
 #include "camio/camio_util.h"
 #include "camio/camio_errors.h"
 
-#include "qj_control.h"
 #include "arp.h"
 
 
@@ -49,7 +48,6 @@ struct packet_gen_opt_t{
     uint64_t burst;
     int64_t pid;
     uint64_t offset;
-    int qj;
     uint64_t host;
     char* schedmode;
     size_t schedmode_e;
@@ -216,11 +214,9 @@ void update_packet(eth_ip_udp_head_t* packet){
 }
 
 
-qj_packet go_packet;
 struct timeval start, tic, toc, res;
 camio_ostream_t* out = NULL;
 camio_istream_t* listener = NULL;
-camio_istream_t* qj = NULL;
 size_t packet_len = 0;
 void flush_and_close_netmap(){
     if(out){
@@ -240,7 +236,6 @@ void term(int signum){
     printf("Terminating...\n");
     flush_and_close_netmap();
     if(listener) { listener->delete(listener); }
-    if(qj)     { qj->delete(qj); }
     exit(0);
 }
 
@@ -381,21 +376,6 @@ void init_arp_reply() {
 
 }
 
-void init_go_packet() {
-
-    int i = 0;
-    for(; i < 6; i++){
-        go_packet.dst_mac[i] = ~0; //Send to the broadcast MAC
-        go_packet.src_mac[i] = ((uint8_t *)&src_mac)[i];
-    }
-
-    //Set the ethtype field
-    go_packet.ether_type = htons(0xFEED);
-    go_packet.host_id    = options.host + 1; //Pass authority on to the next host.
-    go_packet.seq        = 0; 
-
-}
-
 
 
 static inline void sync_to_clock(){
@@ -435,34 +415,6 @@ static inline void sync_to_clock(){
 }
 
 
-
-static inline int read_qj(int qj_stop){
-    //size_t qj_len;
-    uint8_t* qj_data;
-
-    //qj_len = 
-    qj->start_read(qj,&qj_data);
-    //printf("Read message of %lu\n", qj_len);
-    const qj_packet* go_stop = (qj_packet*)qj_data;
-    if(go_stop->ether_type == htons(0xFEED)){
-        if(go_stop->host_id == options.host){
-            if(options.verbose) printf("Starting...[%lu == %lu]\n", go_stop->host_id, options.host );
-            qj_stop = 0;
-        }
-        else{
-            if(options.verbose) printf("Stopping...[%lu != %lu]\n", go_stop->host_id, options.host );
-            qj_stop = 1;
-        }
-    }
-    qj->end_read(qj,NULL);
-
-    return qj_stop;
-}
-
-
-
-enum { C3PO_SCHED_NONE = 0, C3PO_SCHED_TDMA, C3PO_SCHED_YIELD, C3PO_SCHED_MAXMIN, };
-
 int main(int argc, char** argv){
 
     signal(SIGTERM, term);
@@ -483,35 +435,13 @@ int main(int argc, char** argv){
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'u', "use-seq",   "Use sequence numbers in packets [true]", CAMIO_BOOL, &options.use_seq, 1);
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'b', "burst",     "How many packets to send in each burst [0]", CAMIO_UINT64, &options.burst, 0 );
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'o', "offset",    "How long in microseconds to sleep before beginning to send", CAMIO_UINT64, &options.offset, 0 );
-    camio_options_add(CAMIO_OPTION_FLAG,     'R', "qj",      "R2D2 mode. Listen for R2D2 halt messages", CAMIO_BOOL, &options.qj, 0 );
     camio_options_add(CAMIO_OPTION_FLAG,     'V', "verbose",   "Verbose output messages", CAMIO_BOOL, &options.verbose, 0 );
-    camio_options_add(CAMIO_OPTION_OPTIONAL, 'H', "host-id",   "R2D2 host id when in R2D2 mode", CAMIO_UINT64, &options.host, 0 );
-    camio_options_add(CAMIO_OPTION_OPTIONAL, 'M', "schedmode", "R2D2 scheduling mode when in R2D2 mode; options {none, tdma, yield, maxmin} [tdma]", CAMIO_STRING, &options.schedmode, "none" );
     camio_options_add(CAMIO_OPTION_OPTIONAL, 't', "timeout",   "time to run for [60s]", CAMIO_UINT64, &options.timeout, 3* 60 * 1000 * 1000 * 1000ULL );
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'S', "stop",      "How many packets to send before stopping for a break [0]", CAMIO_UINT64, &options.stop, 0 );
 
     camio_options_long_description("Generates packets using netmap at up to linerate for all packet sizes.");
     camio_options_parse(argc, argv);
     source_hwaddr(options.iface,&src_mac);
-
-
-    printf(" **************************************************************\n" ); 
-    printf(" ********************** Host ID == %lu **************************\n", options.host); 
-    printf(" **************************************************************\n" ); 
-
-    if(strcmp(options.schedmode, "none") == 0){
-        options.schedmode_e = C3PO_SCHED_NONE;
-    }
-    else if(strcmp(options.schedmode, "tmda") == 0){
-        options.schedmode_e = C3PO_SCHED_TDMA;
-    }
-    else if(strcmp(options.schedmode, "yield") == 0) {
-        options.schedmode_e = C3PO_SCHED_YIELD;
-    }
-    else if(strcmp(options.schedmode, "minmax") == 0) {
-        options.schedmode_e = C3PO_SCHED_MAXMIN;
-    }
-    printf("Setting sched mode to %s (%lu)\n", options.schedmode, options.schedmode_e);
 
 
 
@@ -540,15 +470,6 @@ int main(int argc, char** argv){
         };
         out = camio_ostream_new(nm_str, &params);
 
-        if(options.qj){
-            camio_ostream_netmap_t* priv = out->priv;
-            camio_istream_netmap_params_t i_params = {
-                    .nm_mem       = priv->nm_mem,
-                    .nm_mem_size  = priv->mem_size,
-                    .fd           = out->fd,
-            };
-            qj = camio_istream_new(nm_str,&i_params);
-        }
 
         //Prepare an intial packet
         uint8_t pbuff[2 * 1024];
@@ -560,7 +481,6 @@ int main(int argc, char** argv){
         packet_len = packet_len > 1514 ? 1514 : packet_len;
         prepare_packet(options.iface, packet,packet_len);
 
-        init_go_packet();
         //        //Figure out the delay parameters
         double ipns = 0.8; //Instructions per nano second
 
@@ -580,25 +500,13 @@ int main(int argc, char** argv){
             usleep(options.offset);
         }
 
-        int qj_stop = 1;
         size_t bytes = 0;
 
         //Rock and roll,fast path begins here
         gettimeofday(&tic, NULL);
         gettimeofday(&start, NULL);
         while(1){
-            if(unlikely(qj != NULL)){
-                //printf("Waiting for go authority 1...\n");
-                if(unlikely( qj->ready(qj) )){
-                    qj_stop = read_qj(qj_stop);
-                }
-            }
 
-            while(unlikely(qj && qj_stop)){
-                //printf("Waiting for go authority...\n");
-                qj_stop = read_qj(qj_stop);
-            }
-            //printf("Have auth to send...\n");
 
 
             if(unlikely(pppcount && pppcount % (5 * 1000 * 1000 ) == 0)){
@@ -623,20 +531,6 @@ int main(int argc, char** argv){
             out->assign_write(out,(uint8_t*)packet, buff_len);
             out->end_write(out,packet_len);
             bytes += packet_len;
-
-            if(options.stop && pppcount && (pppcount % options.stop == 0)){
-                // Yield the slot as we've finished if we're in cooperative yielding mode
-                if(options.schedmode_e == C3PO_SCHED_YIELD || options.schedmode_e == C3PO_SCHED_MAXMIN ){
-                    printf("Sending stop message\n");
-                    go_packet.seq++;  
-                    out->assign_write(out, (uint8_t*)&go_packet, sizeof(go_packet));
-                    out->end_write(out, sizeof(go_packet));
-                    out->flush(out); //We're done so send this immediately
-                    qj_stop = 1; 
-                    printf("Sent %lu messages, stopping now\n", pppcount);
-                    //        continue;
-                }
-            }
 
             if(options.burst && pppcount && (pppcount % options.burst == 0)){
                 //Delay until we send again
