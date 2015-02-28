@@ -1,5 +1,11 @@
-# qjump-camio-tools
-QJump tools based on the CamIO 1.0 library
+REQUIREMENTS
+===========
+
+
+OpenSSL
+-------
+This software requires the openssl headers. On Ubuntu these can be installed with 
+sudo apt-get install openssl-dev
 
 Cake
 -----
