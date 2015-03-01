@@ -32,7 +32,7 @@ RUNNING
 Dag analyse has the following options  
 
 dag_analyse:  
-
+|---------|-----|---------------|------------------------------------------------------------------------------|
 |Required | -i  | --dag0-in     |   - Dag ERF input file name. eg /tmp/dag_cap_A  |
 |Flag     | -s  | --std-out     |    - Write the output to std-out  |
 |Optional | -o  | --dag0-out    |    - Dag ERF output file name. eg /tmp/dag_cap_A.txt [erf.out]  |
