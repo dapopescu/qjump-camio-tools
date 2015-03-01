@@ -1,4 +1,8 @@
-REQUIREMENTS
+DAG_ANALYSE
+===========
+Converts dag capture files into ASCII. Reports basic statistics about each file.
+
+Requirements
 ============
 
 OpenSSL
@@ -18,7 +22,7 @@ You can obtain the camio 1.0 library from
 https://github.com/mgrosvenor/camio1.0
 To build camio, run "build.sh" in the root directory.
 
-BUILDING
+Building
 ========
 To build a debug version run:
 ./build.sh
@@ -26,7 +30,7 @@ To build a debug version run:
 To build a release version run:
 ./build.sh --variant=release
 
-RUNNING
+Running
 =======
 
 Dag analyse has the following options  
@@ -46,5 +50,5 @@ dag_analyse:
 |Flag     | -b  | --use-bin     |    - Write the output in bin format (default = False)  |
 |Flag     | -h  | --help        |    - Print this help message  |
   
-Converts dag capture files into ASCII. Reports basic statistics about each file.
+
 

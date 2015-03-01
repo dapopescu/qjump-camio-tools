@@ -1,4 +1,8 @@
-REQUIREMENTS
+DAG_CAPTURE
+============
+Captures network trace in to memory using Endace DAG Capture Card. 
+
+Requirements
 ============
 
 Cake
@@ -14,7 +18,7 @@ https://github.com/mgrosvenor/camio1.0
 To build camio, run "build.sh" in the root directory.
 
 
-BUILDING
+Building
 ========
 To build a debug version run:
 ./build.sh
@@ -22,14 +26,16 @@ To build a debug version run:
 To build a release version run:
 ./build.sh --variant=release
 
-RUNNING
+Running
 =======
 
 dag_capture_ng:
 
-Optional  -i  --dag-in          - The DAG input card to listen on [dag:/dev/dag0]
-Optional  -s  --samples         - Number of samples to capture [1000000]
-Optional  -t  --timeout         - Time in seconds to listen for samples, 0 = unlimited [10]
-Flag      -h  --help            - Print this help message
+|Mode     |Short|Long Option    | Description                                                                  |
+|---------|-----|---------------|------------------------------------------------------------------------------|
+|Optional | -i  |--dag-in       |   - The DAG input card to listen on [dag:/dev/dag0] |
+|Optional | -s  |--samples      |   - Number of samples to capture [1000000] |
+|Optional | -t  |--timeout      |   - Time in seconds to listen for samples, 0 = unlimited [10] |
+|Flag     | -h  |--help         |   - Print this help message |
 
 
