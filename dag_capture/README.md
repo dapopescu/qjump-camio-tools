@@ -1,4 +1,8 @@
-REQUIREMENTS
+DAG_CAPTURE
+============
+Captures network trace in to memory using Endace DAG Capture Card. 
+
+Requirements
 ============
 
 Cake
@@ -14,7 +18,7 @@ https://github.com/mgrosvenor/camio1.0
 To build camio, run "build.sh" in the root directory.
 
 
-BUILDING
+Building
 ========
 To build a debug version run:
 ./build.sh
@@ -22,7 +26,7 @@ To build a debug version run:
 To build a release version run:
 ./build.sh --variant=release
 
-RUNNING
+Running
 =======
 
 dag_capture_ng:
