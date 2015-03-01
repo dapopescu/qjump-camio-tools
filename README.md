@@ -1,22 +1,9 @@
-# qjump-camio-tools
+qjump-camio-tools
+===================
+
 QJump tools based on the CamIO 1.0 library
 
-REQUIREMENTS
-============
-
-Cake
------
-To build it, you must have the "cake" build system installed. 
-You can obtain cake from https://github.com/Zomojo/Cake
-To insall cake, follow the instructions in "INSTALL".
-
-CamIO 1.0
----------
-You can obtain the camio 1.0 library from 
-https://github.com/mgrosvenor/camio1.0
-To build camio, run "build.sh" in the root directory.
-
-TOOLS
+Tools
 =====
 
 dag_capture
@@ -36,6 +23,23 @@ Takes two ERF encoded files and looks for matching packets to join. Calculates t
 packet_gen
 ----------
 A full featured packet generator based on Netmap for use with Intel X520 NICs or similar
+
+
+Requirements
+============
+
+Cake
+-----
+To build it, you must have the "cake" build system installed. 
+You can obtain cake from https://github.com/Zomojo/Cake
+To insall cake, follow the instructions in "INSTALL".
+
+CamIO 1.0
+---------
+You can obtain the camio 1.0 library from 
+https://github.com/mgrosvenor/camio1.0
+To build camio, run "build.sh" in the root directory.
+
 
 
 
