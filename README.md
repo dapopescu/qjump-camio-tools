@@ -1,7 +1,7 @@
 qjump-camio-tools
 ===================
 
-QJump tools based on the CamIO 1.0 library
+QJump tools based on the CamIO 1.0 library found here: https://github.com/mgrosvenor/camio1.0
 
 Tools
 =====
