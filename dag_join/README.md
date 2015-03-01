@@ -1,4 +1,14 @@
-REQUIREMENTS
+DAG_JOIN
+========
+Looks for all packets in dag0 that also that appear in dag1.
+Reports packets that are in dag0 that are not in dag1.
+Calculates the latency between cap-in1 and cap-in0.
+Outputs as a binary by appending into the data section of the ERF, in ssv and csv formats. 
+
+Use -f and -l to control the offset and length to use from cap-in0. This makes the application trivial to parallelize for long traces.
+
+
+Requirements
 ============
 
 Cake
@@ -14,7 +24,7 @@ https://github.com/mgrosvenor/camio1.0
 To build camio, run "build.sh" in the root directory.
 
 
-BUILDING
+Building
 ========
 To build a debug version run:
 ./build.sh
@@ -22,7 +32,7 @@ To build a debug version run:
 To build a release version run:
 ./build.sh --variant=release
 
-RUNNING
+Running
 =======
 
 dag_join:
@@ -39,10 +49,4 @@ dag_join:
 |Flag     | -V  | --vverbose    |    - Output more feedback                                                    |
 |Flag     | -h  | --help        |    - Print this help message                                                 |
 
-Looks for all packets in dag0 that also that appear in dag1.
-Reports packets that are in dag0 that are not in dag1.
-Calculates the latency between cap-in1 and cap-in0.
-Outputs as a binary by appending into the data section of the ERF, in ssv and csv formats. 
-
-Use -f and -l to control the offset and length to use from cap-in0. This makes the application trivial to parallelize for long traces.
 
