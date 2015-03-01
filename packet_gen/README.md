@@ -1,4 +1,9 @@
-REQUIREMENTS
+PACKET_GEN
+==========
+
+Generates packets using netmap at up to linerate for all packet sizes.
+
+Requirements
 ============
 
 Cake
@@ -14,7 +19,7 @@ https://github.com/mgrosvenor/camio1.0
 To build camio, run "build.sh" in the root directory.
 
 
-BUILDING
+Building
 ========
 To build a debug version run:
 ./build.sh
@@ -22,7 +27,7 @@ To build a debug version run:
 To build a release version run:
 ./build.sh --variant=release
 
-RUNNING
+Running
 =======
 
 
@@ -49,5 +54,5 @@ packet_gen:
 |Optional | -S  |--stop         |   - How many packets to send before stopping for a break [0] |
 |Flag     | -h  |--help         |   - Print this help message |
 
-Generates packets using netmap at up to linerate for all packet sizes.
+
 
