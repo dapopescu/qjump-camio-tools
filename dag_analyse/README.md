@@ -31,7 +31,9 @@ RUNNING
 
 Dag analyse has the following options  
 
-dag_analyse:  
+dag_analyse:
+
+|Mode     |Short|Long Option    | Description                                                                  |
 |---------|-----|---------------|------------------------------------------------------------------------------|
 |Required | -i  | --dag0-in     |   - Dag ERF input file name. eg /tmp/dag_cap_A  |
 |Flag     | -s  | --std-out     |    - Write the output to std-out  |
