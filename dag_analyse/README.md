@@ -1,3 +1,6 @@
+DAG_ANALYSE
+Converts dag capture files into ASCII. Reports basic statistics about each file.
+
 REQUIREMENTS
 ============
 
@@ -46,5 +49,5 @@ dag_analyse:
 |Flag     | -b  | --use-bin     |    - Write the output in bin format (default = False)  |
 |Flag     | -h  | --help        |    - Print this help message  |
   
-Converts dag capture files into ASCII. Reports basic statistics about each file.
+
 
