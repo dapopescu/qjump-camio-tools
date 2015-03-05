@@ -24,6 +24,10 @@ packet_gen
 ----------
 A full featured packet generator based on Netmap for use with Intel X520 NICs or similar
 
+camio_perf
+----------
+A simple packet generator of the style of iperf. Uses sockets to generate high rate packets and has a precise pacing option. 
+
 
 Requirements
 ============
