@@ -127,8 +127,13 @@ static uint64_t sampling_ended;
 
 
 #define SECS2NS (1000 * 1000 * 1000)
-static inline uint64_t fixed_32_32_to_nanos(uint64_t fixed){
-	uint64_t subsecs = ((fixed & 0xFFFFFFFF) * SECS2NS) >> 32;
+static inline uint64_t fixed_32_32_to_nanos(dag_record_t* data){
+	if(data->flags.reserved){ //HACK! Use the reserved flag to indicate if ExaNIC nanos timestamp was used
+	    return data->ts;
+	}
+
+    const uint64_t fixed = data->ts;
+    uint64_t subsecs = ((fixed & 0xFFFFFFFF) * SECS2NS) >> 32;
 	uint64_t seconds = (fixed >> 32) * SECS2NS;
 
 
@@ -215,7 +220,7 @@ static void term(int signum){
 static inline void dump_erf(dag_record_t* record){
 	dprintf("ERF [");
 
-	dprintf("ts:0x%016lu ", fixed_32_32_to_nanos(record->ts) );
+	dprintf("ts:0x%016lu ", fixed_32_32_to_nanos(record) );
 	dprintf("tp:0x%02x ", record->type);
 
 	const char* vlen  = record->flags.vlen      ? "|V" : "";
@@ -238,7 +243,7 @@ static inline void dump_erf(dag_record_t* record){
 int main(int argc, char** argv){
 
 	camio_options_short_description("dag_capture_ng");
-	camio_options_add(CAMIO_OPTION_OPTIONAL, 'i', "dag-in",      "The DAG input card to listen on [dag:/dev/dag0]", CAMIO_STRING, &options.dag_in, "dag:/dev/dag0");
+	camio_options_add(CAMIO_OPTION_OPTIONAL, 'i', "input",      "The DAG/ExaNIC input card to listen on e.g exa:exanic0 or dag:/dev/dag0 [dag:/dev/dag0]", CAMIO_STRING, &options.dag_in, "dag:/dev/dag0");
 	camio_options_add(CAMIO_OPTION_OPTIONAL, 's', "samples",     "Number of samples to capture [1000000]", CAMIO_UINT64, &options.samples, 1000000 );
 	camio_options_add(CAMIO_OPTION_OPTIONAL, 't', "timeout",     "Time in seconds to listen for samples, 0 = unlimited [10]", CAMIO_UINT64, &options.timeout_secs, 1200);
 	camio_options_parse(argc, argv);
@@ -304,10 +309,9 @@ int main(int argc, char** argv){
 			continue;
 		}
 
-		sample_time = data->ts;
 
 		if(unlikely(first)){
-			sampling_started_ns = fixed_32_32_to_nanos(sample_time);
+            sampling_started_ns = fixed_32_32_to_nanos(data);
 			end_time_ns += sampling_started_ns; //Nasty, add the first sample to the timeout nanos to get an end time
 			first = 0;
 		}
@@ -333,7 +337,7 @@ int main(int argc, char** argv){
 		}
 
 
-		if(unlikely(options.timeout_secs && fixed_32_32_to_nanos(sample_time) > end_time_ns)){
+		if(unlikely(options.timeout_secs && fixed_32_32_to_nanos(data) > end_time_ns)){
 			printf("Timeout after %lu seconds\n", options.timeout_secs);
 			break;
 		}
