@@ -57,6 +57,9 @@ static inline uint64_t fixed_32_32_to_nanos(const sample_t* sample)
 {
     dag_record_t* rec = (dag_record_t*)sample;
     uint64_t fixed    = rec->ts;
+    if(rec->flags.reserved == 1){
+        return fixed;
+    }
 
     uint64_t subsecs = ((fixed & 0xFFFFFFFF) * SECS2NS) >> 32;
     uint64_t seconds = (fixed >> 32) * SECS2NS;

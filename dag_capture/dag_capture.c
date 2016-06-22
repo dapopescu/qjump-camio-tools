@@ -119,7 +119,7 @@ sample_t* alloc_sample_mem(size_t samples){
 static camio_istream_t* dagcap = NULL;
 static sample_t* sample_space = NULL;
 static uint64_t samples_total = 0;
-static uint64_t samples_[2] = { 0, 0 };
+static uint64_t samples_[4] = { 0, 0, 0, 0 };
 static uint64_t sample_time = 0;
 static uint64_t sampling_started_ns;
 static uint64_t sampling_ended;
@@ -128,7 +128,8 @@ static uint64_t sampling_ended;
 
 #define SECS2NS (1000 * 1000 * 1000)
 static inline uint64_t fixed_32_32_to_nanos(dag_record_t* data){
-	if(data->flags.reserved){ //HACK! Use the reserved flag to indicate if ExaNIC nanos timestamp was used
+
+    if(data->flags.reserved){ //HACK! Use the reserved flag to indicate if ExaNIC nanos timestamp was used
 	    return data->ts;
 	}
 
@@ -168,12 +169,18 @@ static void term(int signum){
 		munlock(sample_space,bytes);
 		char sample_file_a[20] = "blob:/tmp/dag_cap_A";
 		char sample_file_b[20] = "blob:/tmp/dag_cap_B";
+        char sample_file_c[20] = "blob:/tmp/dag_cap_C";
+        char sample_file_d[20] = "blob:/tmp/dag_cap_D";
 
-		printf("Shutting down. Outputting %lu samples (A=%lu B=%lu)\n", samples_total, samples_[0], samples_[1]);
+
+		printf("Shutting down. Outputting %lu samples (A=%lu B=%lu,C=%lu,D=%lu))\n", samples_total, samples_[0], samples_[1], samples_[2], samples_[3] );
 
 		camio_ostream_t* out_a = camio_ostream_new(sample_file_a,NULL);
 		camio_ostream_t* out_b = camio_ostream_new(sample_file_b,NULL);
-		camio_ostream_t* outs[2] = { out_a, out_b };
+        camio_ostream_t* out_c = camio_ostream_new(sample_file_c,NULL);
+        camio_ostream_t* out_d = camio_ostream_new(sample_file_d,NULL);
+
+		camio_ostream_t* outs[4] = { out_a, out_b, out_c, out_d };
 
 		int port = 0;
 		if(samples_total){
@@ -182,25 +189,31 @@ static void term(int signum){
 
 			int64_t samples_out_a = 0;
 			int64_t samples_out_b = 0;
+			int64_t samples_out_c = 0;
+			int64_t samples_out_d = 0;
 
 			size_t i        = 0;
 			for(; i < samples_total; i++, sample++){
 				dag_record_t* data = (dag_record_t*)sample;
 				port = data->flags.iface;
 
-				samples_out_a += port ? 0 : 1;
-				samples_out_b += port ? 1 : 0;
+				samples_out_a += port == 0 ? 1 : 0;
+				samples_out_b += port == 1 ? 1 : 0;
+				samples_out_c += port == 2 ? 1 : 0;
+				samples_out_d += port == 3 ? 1 : 0;
 
-				data->rlen = htons(sizeof(sample_t));
+				data->rlen = ntohs(sizeof(sample_t));
 
 				outs[port]->assign_write(outs[port],(uint8_t*)data, sizeof(sample_t));
 				outs[port]->end_write(outs[port], sizeof(sample_t));
 			}
 
-			printf("Wrote out %lu samples for A and %lu samples for B\n", samples_out_a, samples_out_b);
+			printf("Wrote out %lu samples for A and %lu samples for B, %lu samples for C and %lu samples for D\n", samples_out_a, samples_out_b,samples_out_c, samples_out_d);
 
 			outs[0]->delete(outs[0]);
 			outs[1]->delete(outs[1]);
+			outs[1]->delete(outs[2]);
+			outs[1]->delete(outs[3]);
 		}
 	}
 
@@ -218,7 +231,8 @@ static void term(int signum){
 
 
 static inline void dump_erf(dag_record_t* record){
-	dprintf("ERF [");
+#ifndef NDEBUG
+    dprintf("ERF [");
 
 	dprintf("ts:0x%016lu ", fixed_32_32_to_nanos(record) );
 	dprintf("tp:0x%02x ", record->type);
@@ -234,7 +248,7 @@ static inline void dump_erf(dag_record_t* record){
 	dprintf("rl:%u ", ntohs(record->rlen));
 	dprintf("lc:%u ", ntohs(record->lctr));
 	dprintf("wl:%u]\n", ntohs(record->wlen));
-
+#endif
 }
 
 
@@ -295,10 +309,10 @@ int main(int argc, char** argv){
 			continue;
 		}
 
-		if(unlikely(data->flags.iface > 1)){
-			printf("## Warning! Packet from an unknown port on the card (%u)\n", data->flags.iface);
-			continue;
-		}
+//		if(unlikely(data->flags.iface > 1)){
+//			printf("## Warning! Packet from an unknown port on the card (%u)\n", data->flags.iface);
+//			continue;
+//		}
 
 
 		samples_[data->flags.iface]++;
@@ -315,6 +329,8 @@ int main(int argc, char** argv){
 			end_time_ns += sampling_started_ns; //Nasty, add the first sample to the timeout nanos to get an end time
 			first = 0;
 		}
+
+		data->rlen = htons(80); //Make this a valid erf packet
 
 		//Loop unroll the assignment.
 		sample->raw[0] = ((int64_t*)data)[0];

@@ -31,8 +31,13 @@ static void term(int signum){
 
 
 #define SECS2NS (1000 * 1000 * 1000)
-static inline uint64_t fixed_32_32_to_nanos(uint64_t fixed)
+static inline uint64_t fixed_32_32_to_nanos(const dag_record_t* record)
 {
+    if(record->flags.reserved == 1){
+        return record->ts;
+    }
+    const uint64_t fixed = record->ts;
+
     uint64_t subsecs = ((fixed & 0xFFFFFFFF) * SECS2NS) >> 32;
     uint64_t seconds = (fixed >> 32) * SECS2NS;
 
@@ -163,7 +168,7 @@ static inline void parse_ethernet_macs(int len, const uint8_t* eth_header, packe
 
 static inline void parse_packet(const dag_record_t* data, packet_info_t* packet_info)
 {
-    packet_info->pkt_timestamp_ns = fixed_32_32_to_nanos(data->ts);
+    packet_info->pkt_timestamp_ns = fixed_32_32_to_nanos(data);
     packet_info->pkt_lost_count   = ntohs(data->lctr);
     packet_info->pkt_wlen         = ntohs(data->wlen);
 
@@ -371,13 +376,13 @@ int main(int argc, char** argv){
     //Advance into the stream, move the data pointer as we go
     //if we get to the end of the stream, bug out.
     dag_record_t* dag_rec = (dag_record_t*)dag_data_head;
-    int64_t start_time = fixed_32_32_to_nanos(dag_rec->ts);
+    int64_t start_time = fixed_32_32_to_nanos(dag_rec);
     int64_t current_time = start_time;
 
     int64_t rec_idx = 0;
     for(; rec_idx < options.offset;
             rec_idx++,
-            current_time = fixed_32_32_to_nanos(dag_rec->ts),
+            current_time = fixed_32_32_to_nanos(dag_rec),
             dag_rec = (dag_record_t*)((uint8_t*)dag_rec + ntohs(dag_rec->rlen))
     ){
         if((uint8_t*)dag_rec >= (uint8_t*)dag_data_head + len){
@@ -412,7 +417,7 @@ int main(int argc, char** argv){
     dag_record_t* dag_rec_prev = dag_rec;
     for(; rec_idx < options.offset + options.length;
             rec_idx++,
-            current_time = fixed_32_32_to_nanos(dag_rec->ts),
+            current_time = fixed_32_32_to_nanos(dag_rec),
             dag_rec_prev = dag_rec,
             dag_rec      = (dag_record_t*)((uint8_t*)dag_rec + ntohs(dag_rec->rlen)) ){
 
