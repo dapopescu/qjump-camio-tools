@@ -169,16 +169,16 @@ static void term(int signum){
 		munlock(sample_space,bytes);
 		char sample_file_a[20] = "blob:/tmp/dag_cap_A";
 		char sample_file_b[20] = "blob:/tmp/dag_cap_B";
-        char sample_file_c[20] = "blob:/tmp/dag_cap_C";
-        char sample_file_d[20] = "blob:/tmp/dag_cap_D";
+        	char sample_file_c[20] = "blob:/tmp/dag_cap_C";
+        	char sample_file_d[20] = "blob:/tmp/dag_cap_D";
 
 
 		printf("Shutting down. Outputting %lu samples (A=%lu B=%lu,C=%lu,D=%lu))\n", samples_total, samples_[0], samples_[1], samples_[2], samples_[3] );
 
 		camio_ostream_t* out_a = camio_ostream_new(sample_file_a,NULL);
 		camio_ostream_t* out_b = camio_ostream_new(sample_file_b,NULL);
-        camio_ostream_t* out_c = camio_ostream_new(sample_file_c,NULL);
-        camio_ostream_t* out_d = camio_ostream_new(sample_file_d,NULL);
+        	camio_ostream_t* out_c = camio_ostream_new(sample_file_c,NULL);
+        	camio_ostream_t* out_d = camio_ostream_new(sample_file_d,NULL);
 
 		camio_ostream_t* outs[4] = { out_a, out_b, out_c, out_d };
 
@@ -325,7 +325,7 @@ int main(int argc, char** argv){
 
 
 		if(unlikely(first)){
-            sampling_started_ns = fixed_32_32_to_nanos(data);
+            		sampling_started_ns = fixed_32_32_to_nanos(data);
 			end_time_ns += sampling_started_ns; //Nasty, add the first sample to the timeout nanos to get an end time
 			first = 0;
 		}

@@ -4,7 +4,10 @@
  */
 
 #include "dag_analyse.h"
+
+#include <arpa/inet.h>
 #include <endian.h>
+#include <netinet/in.h>
 
 struct options_t {
     char* in;
@@ -12,6 +15,8 @@ struct options_t {
     uint64_t offset;
     int64_t length;
     int64_t ptype;
+    char* ip_src;
+    char* ip_dst;
     int do_head;
     int csv;
     int bin;
@@ -88,7 +93,11 @@ static inline void parse_ip(int len, const uint8_t* data, packet_info_t* packet_
     packet_info->ip_src = ntohl(*(uint32_t*)(data + 12));
     packet_info->ip_dst = ntohl(*(uint32_t*)(data + 16));
     packet_info->ip_len = ntohs(*(uint16_t*)(data + 2));
-
+    //printf("IP SRC in packet:%ld\n", packet_info->ip_src);
+    //printf("%d.%d.%d.%d\n", data[12], data[13], data[14], data[15]);
+    //printf("IP DST in packet %ld\n", packet_info->ip_dst);
+    //printf("%d.%d.%d.%d\n", data[16], data[17], data[18], data[19]);
+    //printf("%lu\n", packet_info->ip_len);
     //No options
     const uint8_t ip_type = data[9];
     switch(ip_type){
@@ -218,7 +227,7 @@ static inline int generate_txt_head(uint8_t* out, int64_t len, int is_csv)
     //General headers
     off += snprintf((char*)out + off, len - off, "%19s%c", "Time now", sep);
     off += snprintf((char*)out + off, len - off, "%12s%c", "Since start", sep);
-    off += snprintf((char*)out + off, len - off, "%12s%c",  "Since last", sep);
+    off += snprintf((char*)out + off, len - off, "%12s%c", "Since last", sep);
     off += snprintf((char*)out + off, len - off, "%4s%c",  "Lost", sep);
     off += snprintf((char*)out + off, len - off, "%4s%c",  "Type", sep);
     off += snprintf((char*)out + off, len - off, "%5s%c",  "Wlen", sep);
@@ -338,6 +347,8 @@ int main(int argc, char** argv){
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'f', "dag0-off",    "The offset (in records) to jump to in dag0.", CAMIO_UINT64, &options.offset, 0);
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'l', "dag0-len",    "The length (in records) to display from dag0. (-1 == all)", CAMIO_INT64, &options.length, 25LL);
     camio_options_add(CAMIO_OPTION_OPTIONAL, 'p', "packet-type", "Filter by packets with the given type. 1=tcp, 2=udp, 3=icmp, -1 == all", CAMIO_INT64, &options.ptype, -1LL);
+    camio_options_add(CAMIO_OPTION_OPTIONAL, 'a', "ip-src-addr", "Filter by IPv4 source address", CAMIO_STRING, &options.ip_src, NULL);
+    camio_options_add(CAMIO_OPTION_OPTIONAL, 'd', "ip-dst-addr", "Filter by IPv4 destination address", CAMIO_STRING, &options.ip_dst, NULL);
     camio_options_add(CAMIO_OPTION_FLAG    , 'H', "write-header","Write a header describing each file's columns", CAMIO_BOOL, &options.do_head, 0);
     camio_options_add(CAMIO_OPTION_FLAG    , 'c', "use-csv",     "Write the output in CSV format (default = False)", CAMIO_BOOL, &options.csv, 0);
     camio_options_add(CAMIO_OPTION_FLAG    , 'b', "use-bin",     "Write the output in bin format (default = False)", CAMIO_BOOL, &options.bin, 0);
@@ -444,6 +455,22 @@ int main(int argc, char** argv){
 
         //Filter packets by type
         if(unlikely(options.ptype != -1 && pkt_info.pkt_type != options.ptype)){
+            continue;
+        }
+       
+        struct sockaddr_in sa, da;
+        if (options.ip_src) {
+            inet_pton(AF_INET, options.ip_src, &(sa.sin_addr));
+        }
+        if (options.ip_dst) {
+            inet_pton(AF_INET, options.ip_dst, &(da.sin_addr));
+        }
+        //printf("INPUT %ld\n", ntohl(sa.sin_addr.s_addr));
+        //printf("INPUT %ld\n", ntohl(da.sin_addr.s_addr));
+        if (unlikely(options.ip_src && (pkt_info.ip_src != ntohl(sa.sin_addr.s_addr)))) {
+            continue;
+        }
+        if (unlikely(options.ip_dst && (pkt_info.ip_dst != ntohl(da.sin_addr.s_addr)))) {
             continue;
         }
 

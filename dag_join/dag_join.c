@@ -77,10 +77,6 @@ static inline uint64_t fixed_32_32_to_nanos(const sample_t* sample)
     return seconds + subsecs;
 }
 
-
-
-
-
 //Go looking for the closest index that matches a given time in nanos
 //A linear search. This will be good when the results are close to each other as they should be
 static inline void get_index_linear(sample_t* samples, uint64_t samples_len, uint64_t start, uint64_t nanos, uint64_t* idx_out){
@@ -103,25 +99,26 @@ static inline void get_index_linear(sample_t* samples, uint64_t samples_len, uin
     const int direction     = (int64_t)nanos - (int64_t)time_now > 0 ? 1 : -1;
     int64_t diff_best       = abs((int64_t)nanos - (int64_t)time_now);
     int64_t index_best      = start;
-
+    //printf("Matching...\n");
+    i += direction;
     for(; i < samples_len && i > -1; i += direction){
 
         const uint64_t time_now = fixed_32_32_to_nanos(&samples[i]);
         const int64_t diff_now = abs((int64_t)nanos - (int64_t)time_now);
-
+        //printf("%ld %ld %ld\n", i, diff_now, diff_best);
         //Walk towards the goal
         if(diff_now < diff_best){
             diff_best = diff_now;
             index_best = i;
         }
 
-        //We're walking away from the goal. Job done!
+        // We're walking away from the goal. Job done!
         if(diff_now > diff_best){
             *idx_out = index_best;
             return;
         }
     }
-
+    *idx_out = index_best;
 }
 
 
@@ -219,7 +216,7 @@ void do_join(sample_t* dag0_data, sample_t* dag1_data,
         //DAG cards are accurate +/- 100ns. If A packet is more than 250ns in the past
         //the world is broken.
         const uint64_t dag0_time      = fixed_32_32_to_nanos(&dag0_samples[d0i]);
-        const int64_t dag0_start_time = dag0_time - 250;
+        const int64_t dag0_start_time = dag0_time - 10;
         const int64_t dag0_end_time   = dag0_time + window_nanos;
         uint64_t dag1_start_idx       = 0;
         uint64_t dag1_end_idx         = ~0;
@@ -229,12 +226,16 @@ void do_join(sample_t* dag0_data, sample_t* dag1_data,
         //we have a range of candidate indexes in dag1 between dag1_start_idx and
         //dag1_end_index. Go looking for a match inside them.
         uint64_t d1i = dag1_start_idx;
+        //printf("%lu %ld %ld\n", d0i, dag1_start_idx, dag1_end_idx);
+        
         for(; d1i <= dag1_end_idx; d1i++){
 
             //Found a hash match
             if(packet_compare(&dag1_samples[d1i], &dag0_samples[d0i]) == 0){
                 output_match(MATCHED,&dag0_samples[d0i],&dag1_samples[d1i], d0i, d1i, out );
                 total_matched++;
+		
+		//printf("MATCH FOUND\n\n");
                 break;
             }
         }
@@ -249,10 +250,55 @@ void do_join(sample_t* dag0_data, sample_t* dag1_data,
             else{
                 total_dropped_before_match++;
             }
+	//	printf("NOT MATCHED\n\n");
         }
     }
 
 }
+
+void do_join_comparison_only(sample_t* dag0_data, sample_t* dag1_data,
+             uint64_t dag0_len, uint64_t dag1_len,
+             uint64_t dag_off, int64_t dag_len, uint64_t window_nanos,
+             int vverbose,  camio_ostream_t* out){
+
+    sample_t* dag1_samples      = dag1_data;
+    sample_t* dag0_samples      = dag0_data;
+    const uint64_t dag0_samples_len = dag0_len / sizeof(sample_t);
+    const uint64_t dag1_samples_len = dag1_len / sizeof(sample_t);
+
+    //Sanity check and adjust the len and offset values so that we don't overflow
+    dag_len = dag_len < 0 ? dag0_samples_len : dag_len;
+    dag_len = MIN(dag_off + dag_len, dag0_samples_len);
+    dag_off = MIN(dag_off, dag0_samples_len);
+
+    printf("%ld %ld %ld\n", dag_len, dag_off, dag1_samples_len);
+    //This is the main join loop. We loop over entries in dag0
+    //looking for matches in dag1
+    uint64_t d0i = dag_off;
+    uint64_t d1i = 0;
+    for(; d0i < dag_len ; d0i++){
+
+        if(unlikely(vverbose)){
+            if(unlikely(d0i % 100000 == 0)){
+                printf("Processed %lu so far...\n", d0i);
+            }
+        }
+        for(d1i = 0; d1i < dag1_samples_len; d1i++){
+            //printf("%ld\n", d1i);
+            //Found a hash match
+            if(packet_compare(&dag1_samples[d1i], &dag0_samples[d0i]) == 0){
+                output_match(MATCHED,&dag0_samples[d0i],&dag1_samples[d1i], d0i, d1i, out );
+                total_matched++;
+		
+		//printf("MATCH FOUND\n\n");
+                break;
+            }
+        }
+    }
+
+}
+
+
 
 
 typedef struct {
@@ -326,7 +372,8 @@ int main(int argc, char** argv){
         printf("Opened, dag1 (%lf MBytes, %lu samples)\n", (double)dag1_len / 1024.0 / 1024.0 , dag1_len / sizeof(sample_t));
     }
 
-    do_join(dag0_data, dag1_data, dag0_len, dag1_len,options.offset,options.length, options.window * 1000, options.vverbose, output);
+    //do_join(dag0_data, dag1_data, dag0_len, dag1_len,options.offset,options.length, options.window * 1000, options.vverbose, output);
+    do_join_comparison_only(dag0_data, dag1_data, dag0_len, dag1_len,options.offset,options.length, options.window * 1000, options.vverbose, output);
 
     if(options.verbose || options.vverbose){
         const uint64_t start = options.offset;
